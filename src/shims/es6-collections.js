@@ -18,7 +18,7 @@ const MapShim = (() => {
         return Map;
     }
 
-    const baseTag = () =>
+    const generateTag = () =>
         '__ResizeObserverPolyfill_Map__' +
         'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
             const r = (Math.random() * 16) | 0;
@@ -55,10 +55,9 @@ const MapShim = (() => {
      * Keep in mind that on deletion the tags are removed from the key objects, though.
      *
      * The insertion process works as following:
-     * - a new tag is generated and then added to the key object as a key on it.
-     * - the current ID is also added to the key object by using the base tag as the value's key.
+     * - the current ID is added to the key object by using the base tag as the value's key.
      * - a tuple with the actual key and the value is added to the map storage object,
-     *   using the generated tag as the key.
+     *   using the generated tag (base tag + current ID) as the key.
      *
      * Given that the implementation must add new keys to the key objects,
      * it is required for the keys to be extensible, else MapShim will throw
@@ -119,8 +118,11 @@ const MapShim = (() => {
                 const id = this.id_ | 0;
 
                 tag = this.tag_ + id.toString();
-                key[this.tag_] = id;
-                key[tag] = true;
+
+                Object.defineProperty(key, this.tag_, {
+                    configurable: true,
+                    value: id
+                });
             }
 
             this.entries_[tag] = [key, value];
@@ -147,6 +149,14 @@ const MapShim = (() => {
         }
 
         /**
+         * @param {string | undefined} tag
+         * @returns {boolean}
+         */
+        exists_(tag) {
+            return tag && tag in this.entries_;
+        }
+
+        /**
          * @param {K} key
          * @returns {V | undefined}
          */
@@ -154,7 +164,7 @@ const MapShim = (() => {
         get(key) {
             const tag = this.getTag_(key);
 
-            if (tag) {
+            if (this.exists_(tag)) {
                 return this.entries_[tag][1];
             }
         }
@@ -167,7 +177,7 @@ const MapShim = (() => {
         set(key, value) {
             const tag = this.getTag_(key);
 
-            if (tag) {
+            if (this.exists_(tag)) {
                 this.entries_[tag][1] = value;
             } else {
                 this.insert_(key, value);
@@ -183,12 +193,11 @@ const MapShim = (() => {
         delete(key) {
             const tag = this.getTag_(key);
 
-            if (!tag) {
+            if (!this.exists_(tag)) {
                 return false;
             }
 
             delete this.entries_[tag];
-            delete key[tag];
             delete key[this.tag_];
             this.size_ -= 1;
 
@@ -200,20 +209,14 @@ const MapShim = (() => {
          * @returns {boolean}
          */
         has(key) {
-            const tag = this.getTag_(key);
-
-            if (!tag) {
-                return false;
-            }
-
-            return tag in this.entries_;
+            return this.exists_(this.getTag_(key));
         }
 
         clear() {
             this.entries_ = Object.create(null);
             this.size_ = 0;
             this.id_ = 0;
-            this.tag_ = baseTag();
+            this.tag_ = generateTag();
         }
 
         /**
