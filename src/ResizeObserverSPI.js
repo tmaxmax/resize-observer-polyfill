@@ -1,21 +1,49 @@
 import {Map} from './shims/es6-collections.js';
 import ResizeObservation from './ResizeObservation.js';
 import ResizeObserverEntry from './ResizeObserverEntry.js';
+import {assertType} from './utils/assert.js';
 import getWindowOf from './utils/getWindowOf.js';
+
+const hasElementInterface = typeof Element !== 'undefined' && Element instanceof Object;
+
+/**
+ * Checks if the calls to `.observe` or `.unobserve` are valid, by asserting
+ * that `arguments.length` is not 0 and that the target is of type Element.
+ *
+ * It also returns a boolean value that means whether the method should execute,
+ * based on the existence of the `Element` interface in the execution environment.
+ *
+ * @param {IArguments} args
+ * @param {Element} target
+ * @returns {boolean}
+ */
+const validateMethodCall = ({length}, target) => {
+    assertType(length, '1 argument required, but only 0 present.');
+
+    if (!hasElementInterface) {
+        return false;
+    }
+
+    assertType(target instanceof getWindowOf(target).Element, 'parameter 1 is not of type "Element".');
+
+    return true;
+};
 
 export default class ResizeObserverSPI {
     /**
      * Collection of resize observations that have detected changes in dimensions
      * of elements.
      *
-     * @private {Array<ResizeObservation>}
+     * @private
+     * @type {Array<ResizeObservation>}
      */
     activeObservations_ = [];
 
     /**
      * Reference to the callback function.
      *
-     * @private {ResizeObserverCallback}
+     * @private
+     * @type {ResizeObserverCallback}
      */
     callback_;
 
@@ -23,21 +51,24 @@ export default class ResizeObserverSPI {
      * Public ResizeObserver instance which will be passed to the callback
      * function and used as a value of it's "this" binding.
      *
-     * @private {ResizeObserver}
+     * @private
+     * @type {ResizeObserver}
      */
     callbackCtx_;
 
     /**
      * Reference to the associated ResizeObserverController.
      *
-     * @private {ResizeObserverController}
+     * @private
+     * @type {ResizeObserverController}
      */
     controller_;
 
     /**
      * Registry of the ResizeObservation instances.
      *
-     * @private {Map<Element, ResizeObservation>}
+     * @private
+     * @type {Map<Element, ResizeObservation>}
      */
     observations_ = new Map();
 
@@ -52,9 +83,7 @@ export default class ResizeObserverSPI {
      *      ResizeObserver instance which will be passed to callback function.
      */
     constructor(callback, controller, callbackCtx) {
-        if (typeof callback !== 'function') {
-            throw new TypeError('The callback provided as parameter 1 is not a function.');
-        }
+        assertType(typeof callback === 'function', 'The callback provided as parameter 1 is not a function.');
 
         this.callback_ = callback;
         this.controller_ = controller;
@@ -68,17 +97,8 @@ export default class ResizeObserverSPI {
      * @returns {void}
      */
     observe(target) {
-        if (!arguments.length) {
-            throw new TypeError('1 argument required, but only 0 present.');
-        }
-
-        // Do nothing if current environment doesn't have the Element interface.
-        if (typeof Element === 'undefined' || !(Element instanceof Object)) {
+        if (!validateMethodCall(arguments, target)) {
             return;
-        }
-
-        if (!(target instanceof getWindowOf(target).Element)) {
-            throw new TypeError('parameter 1 is not of type "Element".');
         }
 
         const observations = this.observations_;
@@ -103,17 +123,8 @@ export default class ResizeObserverSPI {
      * @returns {void}
      */
     unobserve(target) {
-        if (!arguments.length) {
-            throw new TypeError('1 argument required, but only 0 present.');
-        }
-
-        // Do nothing if current environment doesn't have the Element interface.
-        if (typeof Element === 'undefined' || !(Element instanceof Object)) {
+        if (!validateMethodCall(arguments, target)) {
             return;
-        }
-
-        if (!(target instanceof getWindowOf(target).Element)) {
-            throw new TypeError('parameter 1 is not of type "Element".');
         }
 
         const observations = this.observations_;
@@ -173,10 +184,7 @@ export default class ResizeObserverSPI {
 
         // Create ResizeObserverEntry instance for every active observation.
         const entries = this.activeObservations_.map(observation => {
-            return new ResizeObserverEntry(
-                observation.target,
-                observation.broadcastRect()
-            );
+            return new ResizeObserverEntry(observation.target, observation.broadcastRect());
         });
 
         this.callback_.call(ctx, entries, ctx);
