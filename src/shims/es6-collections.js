@@ -122,6 +122,8 @@ const MapShim = (() => {
 
                 Object.defineProperty(key, this.tag_, {
                     configurable: true,
+                    writable: false,
+                    enumerable: false,
                     value: id
                 });
             } else {
