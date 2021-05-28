@@ -18,8 +18,9 @@ const MapShim = (() => {
         return Map;
     }
 
+    const tagPrefix = '__ResizeObserverPolyfill_Map__';
     const generateTag = () =>
-        '__ResizeObserverPolyfill_Map__' +
+        tagPrefix +
         'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
             const r = (Math.random() * 16) | 0;
             const v = c === 'x' ? r : (r & 0x3) | 0x8;
@@ -123,6 +124,12 @@ const MapShim = (() => {
                     configurable: true,
                     value: id
                 });
+            } else {
+                assertType(
+                    !tag.startsWith(tagPrefix),
+                    // eslint-disable-next-line quotes
+                    "Cannot use primitive that stringifies to a value prefixed by MapShim's tag prefix!"
+                );
             }
 
             this.entries_[tag] = [key, value];
@@ -138,7 +145,7 @@ const MapShim = (() => {
             let tag;
 
             if (typeof key === 'object') {
-                if (Object.isExtensible(key)) {
+                if (Object.isExtensible(key) && this.tag_ in key) {
                     tag = this.tag_ + key[this.tag_];
                 }
             } else {
