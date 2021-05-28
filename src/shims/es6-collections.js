@@ -5,111 +5,122 @@
  * modules as they cover only a limited range of use cases.
  */
 /* eslint-disable require-jsdoc, valid-jsdoc */
+/**
+ * BEWARE: The methods `.entries`, `.values`, `.keys` and
+ * any `Symbol`-related properties are not implemented, use with care!
+ *
+ * @type {MapConstructor}
+ */
 const MapShim = (() => {
     if (typeof Map !== 'undefined') {
         return Map;
     }
 
     /**
-     * Returns index in provided array that matches the specified key.
-     *
-     * @param {Array<Array>} arr
-     * @param {*} key
-     * @returns {number}
+     * @template K
+     * @template V
+     * @implements {Map<K, V>}
      */
-    function getIndex(arr, key) {
-        let result = -1;
+    class Shim {
+        constructor() {
+            /**
+             * @private
+             * @type {[K, V][]}
+             */
+            this._entries = [];
+        }
 
-        arr.some((entry, index) => {
-            if (entry[0] === key) {
-                result = index;
+        get size() {
+            return this._entries.length;
+        }
 
-                return true;
+        /**
+         * @private
+         * @param {K} key
+         * @returns {number}
+         */
+        _indexOfKey(key) {
+            // Algorithm is hand-rolled for IE compatibility and best performance
+
+            const [length] = this._entries;
+
+            for (let i = 0; i < length; i += 1) {
+                if (this._entries[i][0] === key) {
+                    return i;
+                }
             }
 
-            return false;
-        });
-
-        return result;
-    }
-
-    return class {
-        constructor() {
-            this.__entries__ = [];
+            return -1;
         }
 
         /**
-         * @returns {boolean}
+         * @param {K} key
+         * @returns {V | undefined}
          */
-        get size() {
-            return this.__entries__.length;
-        }
-
-        /**
-         * @param {*} key
-         * @returns {*}
-         */
+        // eslint-disable-next-line consistent-return
         get(key) {
-            const index = getIndex(this.__entries__, key);
-            const entry = this.__entries__[index];
+            const index = this._indexOfKey(key);
 
-            return entry && entry[1];
+            if (index !== -1) {
+                return this._entries[index][1];
+            }
         }
 
         /**
-         * @param {*} key
-         * @param {*} value
-         * @returns {void}
+         * @param {K} key
+         * @param {V} value
+         * @returns {this}
          */
         set(key, value) {
-            const index = getIndex(this.__entries__, key);
+            const index = this._indexOfKey(key);
 
-            if (~index) {
-                this.__entries__[index][1] = value;
+            if (index === -1) {
+                this._entries.push([key, value]);
             } else {
-                this.__entries__.push([key, value]);
+                this._entries[index][1] = value;
             }
+
+            return this;
         }
 
         /**
-         * @param {*} key
-         * @returns {void}
+         * @param {K} key
+         * @returns {boolean}
          */
         delete(key) {
-            const entries = this.__entries__;
-            const index = getIndex(entries, key);
+            const index = this._indexOfKey(key);
 
-            if (~index) {
-                entries.splice(index, 1);
+            if (index === -1) {
+                return false;
             }
+
+            this._entries.splice(index, 1);
+
+            return true;
         }
 
         /**
-         * @param {*} key
-         * @returns {void}
+         * @param {K} key
+         * @returns {boolean}
          */
         has(key) {
-            return !!~getIndex(this.__entries__, key);
+            return this._indexOfKey(key) !== -1;
         }
 
-        /**
-         * @returns {void}
-         */
         clear() {
-            this.__entries__.splice(0);
+            this._entries.length = 0;
         }
 
         /**
-         * @param {Function} callback
-         * @param {*} [ctx=null]
-         * @returns {void}
+         * @param {(value: V, key: K, map: Map<K, V>) => void} callback
+         * @param {*} [thisArg]
          */
-        forEach(callback, ctx = null) {
-            for (const entry of this.__entries__) {
-                callback.call(ctx, entry[1], entry[0]);
-            }
+        forEach(callback, thisArg) {
+            this._entries.forEach((entry) => callback.call(thisArg, entry[1], entry[0], this));
         }
-    };
+    }
+
+    return Shim;
 })();
 
 export {MapShim as Map};
