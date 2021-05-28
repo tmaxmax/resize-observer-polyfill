@@ -67,7 +67,7 @@ export default class ResizeObserverController {
      * @returns {void}
      */
     addObserver(observer) {
-        if (!~this.observers_.indexOf(observer)) {
+        if (this.observers_.indexOf(observer) === -1) {
             this.observers_.push(observer);
         }
 
@@ -88,7 +88,7 @@ export default class ResizeObserverController {
         const index = observers.indexOf(observer);
 
         // Remove observer if it's present in registry.
-        if (~index) {
+        if (index !== -1) {
             observers.splice(index, 1);
         }
 
@@ -215,7 +215,7 @@ export default class ResizeObserverController {
     onTransitionEnd_({propertyName = ''}) {
         // Detect whether transition may affect dimensions of an element.
         const isReflowProperty = transitionKeys.some(key => {
-            return !!~propertyName.indexOf(key);
+            return propertyName.indexOf(key) !== -1;
         });
 
         if (isReflowProperty) {
