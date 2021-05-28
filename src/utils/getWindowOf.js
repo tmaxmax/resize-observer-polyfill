@@ -1,12 +1,13 @@
 import global from '../shims/global.js';
 
+// eslint-disable-next-line valid-jsdoc
 /**
  * Returns the global object associated with provided element.
  *
- * @param {Object} target
- * @returns {Object}
+ * @param {Node} target
+ * @returns {Window & typeof globalThis}
  */
-export default target => {
+export default (target) => {
     // Assume that the element is an instance of Node, which means that it
     // has the "ownerDocument" property from which we can retrieve a
     // corresponding global object.
