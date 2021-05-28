@@ -108,7 +108,7 @@ const MapShim = (() => {
         }
 
         clear() {
-            this._entries.length = 0;
+            this._entries.splice(0);
         }
 
         /**
