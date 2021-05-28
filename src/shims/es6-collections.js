@@ -116,7 +116,7 @@ const MapShim = (() => {
          * @param {*} [thisArg]
          */
         forEach(callback, thisArg) {
-            this._entries.forEach((entry) => callback.call(thisArg, entry[1], entry[0], this));
+            this._entries.forEach(entry => callback.call(thisArg, entry[1], entry[0], this));
         }
     }
 
